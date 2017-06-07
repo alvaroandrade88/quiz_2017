@@ -222,3 +222,52 @@ exports.check = function (req, res, next) {
         answer: answer
     });
 };
+
+
+exports.randomplay = function (req , res , next){
+	if(!req.session.randomplay) clearResolved(req);
+	var resolved = req.session.randomplay.resolved;
+	var count= 0;
+	models.Quiz.count()
+	.then(function(total) {
+		count= total;
+		return models.Quiz.findAll();
+	})
+	.then(function(quizzes) {
+		if(count === resolved.length){
+			res.render('quizzes/random_nomore', {score: resolved.length});
+      return clearResolved(req);
+		}else{
+			var quizzesNotResolved = quizzes.filter(function(quiz) {
+        return resolved.indexOf(quiz.id) === -1;
+      });
+      rnd = Math.floor(Math.random() * quizzesNotResolved.length);
+			return res.render('quizzes/random_play', {
+        score: resolved.length,
+        quiz: quizzesNotResolved[rnd],
+      });
+		}
+	});
+
+};
+
+exports.randomcheck = function(req, res, next) {
+	var answer = req.query.answer || "";
+	var result = answer.toLowerCase().trim() === req.quiz.answer.toLowerCase().trim();
+	if (result) {
+    req.session.randomplay.resolved.push(req.quiz.id);
+  }else {
+    clearResolved(req);
+  }
+	return res.render('quizzes/random_result', {
+		score: req.session.randomplay.resolved.length,
+		quiz: req.quiz.id,
+		answer: answer,
+		result: result,
+	});
+}
+
+var clearResolved = function(req) {
+  req.session.randomplay = {};
+  req.session.randomplay.resolved = [];
+};
